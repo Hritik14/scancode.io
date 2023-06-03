@@ -130,7 +130,10 @@ def submit_purls(purls, timeout=None, api_url=PURLDB_API_URL):
 
 
 def match_directory(fingerprint, timeout=None, api_url=PURLDB_API_URL):
-    """Match directory content fingerprint in the PurlDB for a single resource directory."""
+    """
+    Match directory content fingerprint in the PurlDB for a single directory
+    resource.
+    """
     payload = {"fingerprint": fingerprint}
     response = request_get(
         url=f"{api_url}approximate_directory_content_index/match/",
