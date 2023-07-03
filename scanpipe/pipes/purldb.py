@@ -157,3 +157,13 @@ def match_directory(fingerprint, timeout=None, api_url=PURLDB_API_URL):
 
     if response and len(response) > 0:
         return response
+
+
+def fetch_package(purl, timeout=None, api_url=PURLDB_API_URL):
+    """Fetch package data for the PURL."""
+    payload = {"purl": purl}
+    response = request_get(url=f"{api_url}packages/", payload=payload, timeout=timeout)
+
+    if response and response.get("count"):
+        results = response["results"]
+        return results
