@@ -706,7 +706,7 @@ def map_javascript(project, logger=None):
     if logger:
         logger(
             f"Mapping {to_resources_dot_map_count:,d} .map resources using javascript "
-            f"map against from/ codebase"
+            f"map against from/ codebase."
         )
 
     from_resources = project_files.from_codebase()
@@ -848,7 +848,7 @@ def map_javascript_post_purldb_match(project, logger=None):
     if logger:
         logger(
             f"Mapping {to_resources_minified_count:,d} minified .js and .css "
-            f"resources based on existing PurlDB match"
+            f"resources based on existing PurlDB match."
         )
 
     to_resources_dot_map_index = pathmap.build_index(
@@ -918,7 +918,7 @@ def map_javascript_path(project, logger=None):
     if logger:
         logger(
             f"Mapping {resource_count:,d} to/ resources using javascript map "
-            f"against from/ codebase"
+            f"against from/ codebase."
         )
 
     from_resources_index = pathmap.build_index(
@@ -1012,6 +1012,7 @@ def map_javascript_colocation(project, logger=None):
         .no_status()
         .filter(extension__in=[".map", ".ts"])
         .exclude(name__startswith=".")
+        .exclude(path__contains="/node_modules/")
     )
 
     to_resources = project_files.to_codebase().no_status().exclude(name__startswith=".")
@@ -1021,8 +1022,8 @@ def map_javascript_colocation(project, logger=None):
 
     if logger:
         logger(
-            f"Mapping {resource_count:,d} to/ resources using javascript map "
-            f"against from/ codebase"
+            f"Mapping {resource_count:,d} to/ resources against from/ codebase"
+            " based on neighborhood file mapping."
         )
 
     resource_iterator = to_resources_key.iterator(chunk_size=2000)
@@ -1040,13 +1041,15 @@ def map_javascript_colocation(project, logger=None):
             start_time=start_time,
         )
         map_count += _map_javascript_colocation_resource(
-            to_resource, to_resources, from_resources
+            to_resource, to_resources, from_resources, project
         )
 
     logger(f"{map_count:,d} resource(s) mapped")
 
 
-def _map_javascript_colocation_resource(to_resource, to_resources, from_resources):
+def _map_javascript_colocation_resource(
+    to_resource, to_resources, from_resources, project
+):
     """Map JavaScript files based on neighborhood file mapping."""
     path = to_resource.path
 
@@ -1055,7 +1058,7 @@ def _map_javascript_colocation_resource(to_resource, to_resources, from_resource
 
     coloaction_path, _ = path.rsplit("-extract/", 1)
 
-    neighboring_relations = CodebaseRelation.objects.filter(
+    neighboring_relations = project.codebaserelations.filter(
         to_resource__path__startswith=coloaction_path,
         map_type__in=["java_to_class", "js_compiled", "sha1"],
     )
