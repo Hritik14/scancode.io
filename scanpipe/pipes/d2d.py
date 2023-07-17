@@ -25,6 +25,8 @@ from itertools import islice
 from pathlib import Path
 from timeit import default_timer as timer
 
+from django.core.exceptions import MultipleObjectsReturned
+from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Q
 
 from commoncode.paths import common_prefix
@@ -1010,7 +1012,7 @@ def map_javascript_colocation(project, logger=None):
 
     to_resources = project_files.to_codebase().no_status().exclude(name__startswith=".")
 
-    from_resources = project_files.from_codebase()
+    from_resources = project_files.from_codebase().exclude(path__contains="/test/")
     resource_count = to_resources_key.count()
 
     if logger:
@@ -1069,6 +1071,19 @@ def _map_javascript_colocation_resource(
         return 0
 
     from_neighboring_resources = from_resources.filter(path__startswith=common_parent)
+
+    try:
+        if sources := js.get_map_sources(to_resource):
+            from_resource = from_neighboring_resources.get(path__endswith=sources[0])
+            return js.map_related_files(
+                to_resources,
+                to_resource,
+                from_resource,
+                "js_colocation",
+                {},
+            )
+    except (MultipleObjectsReturned, ObjectDoesNotExist):
+        pass
 
     from_neighboring_resources_index = pathmap.build_index(
         from_neighboring_resources.values_list("id", "path"), with_subpaths=True
