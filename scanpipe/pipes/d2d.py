@@ -25,6 +25,8 @@ from itertools import islice
 from pathlib import Path
 from timeit import default_timer as timer
 
+from django.db.models import Q
+
 from scanpipe import pipes
 from scanpipe.models import CodebaseRelation
 from scanpipe.models import CodebaseResource
