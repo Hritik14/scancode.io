@@ -101,14 +101,14 @@ def request_post(url, data, timeout=None):
         logger.debug(f"{label} [Exception] {exception}")
 
 
-def collect_response_results(response, data, timeout=None):
+def collect_response_results(response, timeout=None):
     """Return all results from a purldb API response."""
     results = []
     if response and response.get("count"):
         results.extend(response["results"])
         next_page = response.get("next")
         while next_page:
-            response = request_post(url=next_page, data=data, timeout=timeout)
+            response = request_get(url=next_page, timeout=timeout)
             if response and response.get("count"):
                 results.extend(response["results"])
             next_page = response.get("next")
@@ -117,23 +117,19 @@ def collect_response_results(response, data, timeout=None):
 
 def match_packages(sha1_list, timeout=None, api_url=PURLDB_API_URL):
     """Match a list of SHA1 in the PurlDB for package-type files."""
-    data = {"sha1": sha1_list}
-    response = request_post(
-        url=f"{api_url}packages/filter_by_checksums/", data=data, timeout=timeout
-    )
+    payload = {"sha1": sha1_list}
+    response = request_get(url=f"{api_url}packages/", payload=payload, timeout=timeout)
 
-    packages = collect_response_results(response, data=data, timeout=timeout)
+    packages = collect_response_results(response, timeout=timeout)
     return packages
 
 
 def match_resources(sha1_list, timeout=None, api_url=PURLDB_API_URL):
     """Match a list of SHA1 in the PurlDB for resource files."""
-    data = {"sha1": sha1_list}
-    response = request_post(
-        url=f"{api_url}resources/filter_by_checksums/", data=data, timeout=timeout
-    )
+    payload = {"sha1": sha1_list}
+    response = request_get(url=f"{api_url}resources/", payload=payload, timeout=timeout)
 
-    resources = collect_response_results(response, data=data, timeout=timeout)
+    resources = collect_response_results(response, timeout=timeout)
     return resources
 
 
