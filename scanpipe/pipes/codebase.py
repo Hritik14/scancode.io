@@ -20,13 +20,9 @@
 # ScanCode.io is a free software code scanning tool from nexB Inc. and others.
 # Visit https://github.com/nexB/scancode.io for support and download.
 
-import json
-from io import StringIO
-
 from commoncode.resource import VirtualCodebase
 
 from scanpipe.models import Project
-from scanpipe.pipes.output import JSONResultsGenerator
 
 
 def sort_by_lower_name(resource):
@@ -109,7 +105,10 @@ def get_basic_virtual_to_codebase(project):
     The only Resource fields that are populated are path and sha1.
     """
     to_resources = project.codebaseresources.to_codebase()
-    resources = [dict(path=r.path, sha1=r.sha1) for r in to_resources]
+    resources = [
+        dict(path=r.path, sha1=r.sha1, size=r.size, is_file=r.is_file)
+        for r in to_resources
+    ]
     data = dict(files=resources)
     return VirtualCodebase(location=data)
 
