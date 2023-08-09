@@ -98,19 +98,19 @@ def get_codebase_tree(codebase, fields):
     return codebase_dict
 
 
-def get_basic_virtual_to_codebase(project):
+def get_basic_virtual_codebase(resources_qs):
     """
-    Return the to/ codebase from `project` as a VirtualCodebase.
+    Return a VirtualCodebase created from CodebaseResources in `resources_qs`.
 
-    The only Resource fields that are populated are path and sha1.
+    The only Resource fields that are populated are path, sha1, size, and
+    is_file. This is intended for use with
+    scanpipe.pipes.matchcode.fingerprint_codebase_directories
     """
-    to_resources = project.codebaseresources.to_codebase()
     resources = [
-        dict(path=r.path, sha1=r.sha1, size=r.size, is_file=r.is_file)
-        for r in to_resources
+        {"path": r.path, "sha1": r.sha1, "size": r.size, "is_file": r.is_file}
+        for r in resources_qs
     ]
-    data = dict(files=resources)
-    return VirtualCodebase(location=data)
+    return VirtualCodebase(location={"files": resources})
 
 
 class ProjectCodebase:
