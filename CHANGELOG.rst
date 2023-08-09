@@ -1,8 +1,18 @@
 Changelog
 =========
 
-v32.6.0 (unreleased)
+v32.5.1 (2023-08-07)
 --------------------
+
+Security release: This release addresses the security issue detailed below.
+We encourage all users of ScanCode.io to upgrade as soon as possible.
+
+- GHSA-2ggp-cmvm-f62f: Command injection in docker image fetch process
+  The ``fetch_docker_image`` function was subject to potential injection attack.
+  The user inputs are now sanitized before calling the subprocess function.
+  https://github.com/nexB/scancode.io/security/advisories/GHSA-2ggp-cmvm-f62f
+
+---
 
 - Add support for multiple input URLs, and adding multiple pipelines in the project
   creation REST API.
@@ -15,6 +25,10 @@ v32.6.0 (unreleased)
   The dependency data is loaded using the ``find_vulnerabilities`` pipeline backed by
   a VulnerableCode database.
   https://github.com/nexB/scancode.io/issues/835
+
+- Fix root filesystem scanning for installed packages and archived Linux distributions.
+  Allows the scan to discover system packages from `rpmdb.sqlite` and other sources.
+  https://github.com/nexB/scancode.io/pull/840
 
 v32.5.0 (2023-08-02)
 --------------------
