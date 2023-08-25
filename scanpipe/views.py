@@ -39,6 +39,7 @@ from django.db.models.manager import Manager
 from django.http import FileResponse
 from django.http import Http404
 from django.http import HttpResponse
+from django.http import HttpResponseRedirect
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.shortcuts import redirect
@@ -60,14 +61,15 @@ from scancodeio.auth import conditional_login_required
 from scanpipe.api.serializers import DiscoveredDependencySerializer
 from scanpipe.filters import PAGE_VAR
 from scanpipe.filters import DependencyFilterSet
-from scanpipe.filters import ErrorFilterSet
 from scanpipe.filters import PackageFilterSet
 from scanpipe.filters import ProjectFilterSet
+from scanpipe.filters import ProjectMessageFilterSet
 from scanpipe.filters import RelationFilterSet
 from scanpipe.filters import ResourceFilterSet
 from scanpipe.forms import AddInputsForm
 from scanpipe.forms import AddPipelineForm
 from scanpipe.forms import ArchiveProjectForm
+from scanpipe.forms import ProjectCloneForm
 from scanpipe.forms import ProjectForm
 from scanpipe.forms import ProjectSettingsForm
 from scanpipe.models import CodebaseRelation
@@ -75,7 +77,7 @@ from scanpipe.models import CodebaseResource
 from scanpipe.models import DiscoveredDependency
 from scanpipe.models import DiscoveredPackage
 from scanpipe.models import Project
-from scanpipe.models import ProjectError
+from scanpipe.models import ProjectMessage
 from scanpipe.models import Run
 from scanpipe.models import RunInProgressError
 from scanpipe.pipes import count_group_by
@@ -442,6 +444,30 @@ class ExportXLSXMixin:
         return response
 
 
+class FormAjaxMixin:
+    def is_xhr(self):
+        return self.request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest"
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+
+        if self.is_xhr():
+            return JsonResponse({"redirect_url": self.get_success_url()}, status=201)
+
+        return response
+
+    def form_invalid(self, form):
+        response = super().form_invalid(form)
+
+        if self.is_xhr():
+            return JsonResponse({"errors": str(form.errors)}, status=400)
+
+        return response
+
+    def get_success_url(self):
+        return self.object.get_absolute_url()
+
+
 class PaginatedFilterView(FilterView):
     """
     Add a `url_params_without_page` value in the template context to include the
@@ -491,9 +517,9 @@ class ProjectListView(
             "sort_name": "codebaseresources_count",
         },
         {
-            "field_name": "projecterrors",
-            "label": "Errors",
-            "sort_name": "projecterrors_count",
+            "field_name": "projectmessages",
+            "label": "Messages",
+            "sort_name": "projectmessages_count",
         },
         {
             "field_name": "runs",
@@ -513,12 +539,12 @@ class ProjectListView(
                 "codebaseresources",
                 "discoveredpackages",
                 "discovereddependencies",
-                "projecterrors",
+                "projectmessages",
             )
         )
 
 
-class ProjectCreateView(ConditionalLoginRequired, generic.CreateView):
+class ProjectCreateView(ConditionalLoginRequired, FormAjaxMixin, generic.CreateView):
     model = Project
     form_class = ProjectForm
     template_name = "scanpipe/project_form.html"
@@ -530,28 +556,6 @@ class ProjectCreateView(ConditionalLoginRequired, generic.CreateView):
             for key, pipeline_class in scanpipe_app.pipelines.items()
         }
         return context
-
-    def is_xhr(self):
-        return self.request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest"
-
-    def form_valid(self, form):
-        response = super().form_valid(form)
-
-        if self.is_xhr():
-            return JsonResponse({"redirect_url": self.get_success_url()}, status=201)
-
-        return response
-
-    def form_invalid(self, form):
-        response = super().form_invalid(form)
-
-        if self.is_xhr():
-            return JsonResponse({"errors": str(form.errors)}, status=400)
-
-        return response
-
-    def get_success_url(self):
-        return self.object.get_absolute_url()
 
 
 class ProjectDetailView(ConditionalLoginRequired, generic.DetailView):
@@ -921,6 +925,24 @@ class ProjectResetView(ConditionalLoginRequired, generic.DeleteView):
         return redirect(project)
 
 
+class HTTPResponseHXRedirect(HttpResponseRedirect):
+    status_code = 200
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self["HX-Redirect"] = self["Location"]
+
+
+class ProjectCloneView(ConditionalLoginRequired, FormAjaxMixin, generic.UpdateView):
+    model = Project
+    form_class = ProjectCloneForm
+    template_name = "scanpipe/includes/project_clone_form.html"
+
+    def form_valid(self, form):
+        super().form_valid(form)
+        return HTTPResponseHXRedirect(self.get_success_url())
+
+
 @conditional_login_required
 def execute_pipeline_view(request, slug, run_uuid):
     project = get_object_or_404(Project, slug=slug)
@@ -1208,20 +1230,24 @@ class DiscoveredDependencyListView(
         return super().get_queryset().order_by("dependency_uid")
 
 
-class ProjectErrorListView(
+class ProjectMessageListView(
     ConditionalLoginRequired,
     ProjectRelatedViewMixin,
     TableColumnsMixin,
     ExportXLSXMixin,
     FilterView,
 ):
-    model = ProjectError
-    filterset_class = ErrorFilterSet
-    template_name = "scanpipe/error_list.html"
+    model = ProjectMessage
+    filterset_class = ProjectMessageFilterSet
+    template_name = "scanpipe/project_message_list.html"
     paginate_by = settings.SCANCODEIO_PAGINATE_BY.get("error", 50)
     table_columns = [
+        {
+            "field_name": "severity",
+            "filter_fieldname": "severity",
+        },
         "model",
-        "message",
+        "description",
         "details",
         "traceback",
     ]
